@@ -26,13 +26,40 @@ Overall Accuracy: 99.20%
 
 ## How to run
 ```python
-from huggingface_hub import hf_hub_download
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from transformers import RobertaTokenizer, T5EncoderModel, AutoTokenizer, AutoModelForMaskedLM
+from huggingface_hub import hf_hub_download
+
+class TemporalFusionClassifier(nn.Module):
+    def __init__(self, base, metric_dim=7):
+        super().__init__()
+        self.base = base
+        h = base.config.hidden_size
+        self.metric_cnn = nn.Sequential(
+            nn.Conv1d(metric_dim, 32, 3, padding=1),
+            nn.BatchNorm1d(32), nn.ReLU(), nn.MaxPool1d(2),
+            nn.Conv1d(32, 64, 3, padding=1),
+            nn.BatchNorm1d(64), nn.ReLU(), nn.AdaptiveAvgPool1d(1)
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(h + 64, 1024), nn.ReLU(), nn.Dropout(0.1), nn.Linear(1024, 1)
+        )
+
+    def forward(self, input_ids, attention_mask, metric_vector):
+        out = self.base(input_ids=input_ids, attention_mask=attention_mask)
+        mask = attention_mask.unsqueeze(-1).float()
+        pooled = (out.last_hidden_state * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-4)
+        cnn_features = self.metric_cnn(metric_vector.transpose(1, 2)).squeeze(-1)
+        return self.classifier(torch.cat([pooled, cnn_features], dim=1))
+
+t5_tokenizer = RobertaTokenizer.from_pretrained("Salesforce/codet5-base")
+base_t5 = T5EncoderModel.from_pretrained("Salesforce/codet5-base")
 
 weights_path = hf_hub_download(repo_id="santh-cpu/ai_code_detect", filename="pytorch_model.bin")
-
-model = TemporalFusionClassifier(base_model)
-model.load_state_dict(torch.load(weights_path))
+model = TemporalFusionClassifier(base_t5)
+model.load_state_dict(torch.load(weights_path, map_location="cpu"))
 model.eval()
 ```
 
