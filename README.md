@@ -1,5 +1,5 @@
 # ai_code_detector
-This is the code i ran to get the [model](https://huggingface.co/santh-cpu/ai_code_detect).
+This is the code i ran on kaggle to train [model](https://huggingface.co/santh-cpu/ai_code_detect).
 
 ## Architecture
 
