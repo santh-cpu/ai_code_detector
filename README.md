@@ -12,8 +12,12 @@ Fusion Network: 1D CNN for temporal feature extraction + Dense Feed-Forward Clas
 Trained on a polyglot dataset (Python, Java, C++) to prevent single-language overfitting.
 
 Training Validation F1: 0.9861
+
 Unseen SemEval-2026 Audit (F1): 0.9921
+
 Overall Accuracy: 99.20%
+
+(on the dataset's validation set)
 
 ## Datasets used
 
